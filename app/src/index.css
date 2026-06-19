@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@plugin "@tailwindcss/typography";
+
+@theme {
+  /* Jika kamu pakai Tailwind v4, variabel di bawah otomatis teregistrasi sebagai utility class */
+}
+
+:root {
+  /* ==========================================
+     1. BASE COLOR CONFIGURATION (Orange Theme)
+     ========================================== */
+  --theme-base-primary-color-h: 27;
+  --theme-base-primary-color-s: 89%;
+  --theme-base-primary-color-l: 48%;
+
+  /* ==========================================
+     2. CUSTOM PRIMARY PALETTE (Hasil Kalkulasi)
+     ========================================== */
+  /* Oren Sangat Muda / Soft Pastel (#FDF4EC) */
+  --theme-primary-custom-100: hsl(var(--theme-base-primary-color-h), var(--theme-base-primary-color-s), 95%);
+  /* Oren Muda / Border Hover (#F9E2CD) */
+  --theme-primary-custom-200: hsl(var(--theme-base-primary-color-h), var(--theme-base-primary-color-s), 87%);
+  /* Oren Lembut / Medium Light (#F3BE91) */
+  --theme-primary-custom-300: hsl(var(--theme-base-primary-color-h), var(--theme-base-primary-color-s), 74%);
+  /* Oren Cerah Klasik / Warna Utama (#E26613) */
+  --theme-primary-custom-400: hsl(var(--theme-base-primary-color-h), var(--theme-base-primary-color-s), var(--theme-base-primary-color-l));
+  /* Oren Tua / Dark Orange (#A2490E) */
+  --theme-primary-custom-500: hsl(var(--theme-base-primary-color-h), var(--theme-base-primary-color-s), 34%);
+  /* Cokelat Oren Gelap / Deep Dark (#5B2908) */
+  --theme-primary-custom-600: hsl(var(--theme-base-primary-color-h), var(--theme-base-primary-color-s), 19%);
+
+  /* Alias Utama */
+  --theme-primary-custom: var(--theme-primary-custom-400);
+  --theme-primary: var(--theme-primary-custom-400);
+
+  /* Fallback Global Warna Hitam & Putih dari Stack Overflow */
+  --white: #ffffff;
+  --black-100: #f8f9fa;
+  --black-200: #e3e6e8;
+  --black-225: #d6d9dc;
+  --black-250: #c8ccd0;
+  --black-300: #babfc4;
+  --black-500: #636b74;
+  --black-600: #232629;
+
+  /* Font Family */
+  --ff-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* ==========================================
+     3. BUTTONS (Tombol Utama & State)
+     ========================================== */
+  --theme-button-color: var(--black-600);
+  --theme-button-hover-color: var(--black-600);
+  --theme-button-hover-background-color: var(--black-100);
+  --theme-button-active-background-color: var(--black-200);
+  --theme-button-selected-color: var(--white);
+  --theme-button-selected-background-color: var(--theme-primary-custom-400);
+  --theme-button-outlined-border-color: var(--black-225);
+  --theme-button-outlined-selected-border-color: var(--theme-primary-custom-500);
+
+  /* Primary Button (Warna Oren) */
+  --theme-button-primary-color: var(--white);
+  --theme-button-primary-active-color: var(--white);
+  --theme-button-primary-hover-color: var(--white);
+  --theme-button-primary-selected-color: var(--white);
+  --theme-button-primary-background-color: var(--theme-primary-custom-400);
+  --theme-button-primary-hover-background-color: var(--theme-primary-custom-500);
+  --theme-button-primary-active-background-color: var(--theme-primary-custom-600);
+  --theme-button-primary-selected-background-color: var(--theme-primary-custom-600);
+
+  /* ==========================================
+     4. LAYOUT & CONTAINERS
+     ========================================== */
+  --theme-background-color: var(--black-100); /* Abu-abu super tipis khas forum */
+  --theme-background-position: top left;
+  --theme-background-repeat: repeat;
+  --theme-background-size: auto;
+  --theme-background-attachment: auto;
+
+  --theme-content-background-color: var(--white);
+  --theme-content-border-color: var(--black-200);
+
+  /* Header (Top Navigation) */
+  --theme-header-background-color: var(--white); /* Atur putih jika ingin navigasi bersih ala modern SO */
+  --theme-header-background-position: center left;
+  --theme-header-background-repeat: repeat;
+  --theme-header-background-size: auto;
+  --theme-header-background-border-bottom: 3px solid var(--theme-primary-custom-400); /* Garis oren di atas header */
+  --theme-header-link-color: var(--black-500);
+  --theme-header-sponsored-color: hsla(0, 0%, 100%, 0.4);
+  --theme-header-foreground-color: transparent;
+  --theme-header-foreground-position: bottom right;
+  --theme-header-foreground-repeat: no-repeat;
+  --theme-header-foreground-size: auto;
+
+  /* Footer (Bagian Bawah Gelap Khas SO) */
+  --theme-footer-background-color: hsl(210, 8%, 5%); /* Hitam Arang Kebiruan #0C0D0E */
+  --theme-footer-background-position: top left;
+  --theme-footer-background-repeat: no-repeat;
+  --theme-footer-background-size: auto;
+  --theme-footer-background-border-top: 0;
+  --theme-footer-title-color: var(--black-250);
+  --theme-footer-text-color: var(--black-300);
+  --theme-footer-link-color: var(--black-300);
+  --theme-footer-link-color-hover: var(--white);
+  --theme-footer-divider-color: var(--black-500);
+  --theme-footer-padding-top: 2rem;
+  --theme-footer-padding-bottom: 2rem;
+
+  /* Links & Typography */
+  --theme-link-color: #0074cc; /* Biru link khas SO */
+  --theme-link-color-hover: #0a95ff;
+  --theme-link-color-visited: #005493;
+
+  --theme-body-font-family: var(--ff-sans);
+  --theme-body-font-color: var(--black-600);
+
+  /* Posts (Pertanyaan & Jawaban) */
+  --theme-post-title-font-family: var(--ff-sans);
+  --theme-post-title-color: var(--theme-link-color);
+  --theme-post-title-color-hover: var(--theme-link-color-hover);
+  --theme-post-title-color-visited: var(--theme-link-color-visited);
+  
+  --theme-post-body-font-family: var(--ff-sans);
+  --theme-post-owner-background-color: var(--theme-primary-custom-100); /* Sorotan kartu user postingan */
+  --theme-post-owner-new-background-color: var(--theme-primary-custom-200);
+  
+  --theme-topbar-bottom-border: 1px solid var(--black-200);
+}
+
+body {
+  background-color: var(--theme-background-color);
+  color: var(--color-black);
+  font-family: var(--theme-body-font-family);
+  margin: 0;
+}
+
+a {
+  color: var(--theme-link-color);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--theme-link-color-hover);
+}
