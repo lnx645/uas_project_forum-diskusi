@@ -16,9 +16,10 @@ export const loader: LoaderFunction = async ({ request }) => {
   const url = new URL(request.url);
   const page = url.searchParams.get("page") || "0";
   const filter = url.searchParams.get("filter") || "Newest";
+  const tag = url.searchParams.get("tag") || "";
 
   try {
-    const response = await api.get(`/api/questions?page=${page}&size=10&filter=${filter}`);
+    const response = await api.get(`/api/questions?page=${page}&size=10&filter=${filter}&tag=${tag}`);
     return response.data;
   } catch (error) {
     console.error(error);

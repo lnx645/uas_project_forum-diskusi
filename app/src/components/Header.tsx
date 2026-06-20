@@ -84,8 +84,10 @@ export function Header({ user }: any) {
       <nav className="container mx-auto flex h-14 items-center px-10">
         <Logo />
         <Navigation />
-        <Search />
-        {user ? <UserAuthenticated user={user} /> : <AuthButtons />}
+        {/* <Search /> */}
+       <div className="ml-auto">
+         {user ? <UserAuthenticated user={user} /> : <AuthButtons />}
+       </div>
       </nav>
     </header>
   );

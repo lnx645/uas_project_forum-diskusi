@@ -23,8 +23,9 @@ public class QuestionRestController {
     public ResponseEntity<com.uas.mardira_forum.dto.QuestionPageResponseDto> get(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size,
-            @RequestParam(defaultValue = "Newest") String filter) {
-        return ResponseEntity.ok(questionService.getQuestionsPaginated(page, size, filter));
+            @RequestParam(defaultValue = "Newest") String filter,
+            @RequestParam(required = false) String tag) {
+        return ResponseEntity.ok(questionService.getQuestionsPaginated(page, size, filter,tag));
     }
 
     @GetMapping("/{id}")

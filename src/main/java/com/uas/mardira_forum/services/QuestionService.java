@@ -38,37 +38,46 @@ public class QuestionService {
         private final SimpMessagingTemplate messagingTemplate;
 
         @Transactional(readOnly = true)
-        public QuestionPageResponseDto getQuestionsPaginated(int page, int size, String filter) {
-                Pageable pageable = PageRequest.of(page, size);
-                Page<Question> questionPage;
+        public QuestionPageResponseDto getQuestionsPaginated(int page, int size, String filter,String tag) {
+             Pageable pageable = PageRequest.of(page, size);
+        Page<Question> questionPage;
 
-                // Evaluasi parameter string filter dari frontend
-                switch (filter.trim().toLowerCase()) {
-                        case "active":
-                                questionPage = questionRepository.findAllOrderByMostAnswers(pageable);
-                                break;
-                        case "trending":
-                                questionPage = questionRepository.findAllByOrderByViewsDesc(pageable);
-                                break;
-                        case "featured":
-                                questionPage = questionRepository.findAllOrderByMostVotes(pageable);
-                                break;
-                        case "newest":
-                        default:
-                                questionPage = questionRepository.findAllByOrderByCreatedAtDesc(pageable);
-                                break;
-                }
+        boolean hasTag = tag != null && !tag.trim().isEmpty();
 
-                List<QuestionResponseDto> dtoList = questionPage.getContent().stream()
-                                .map(this::convertToResponseDto)
-                                .collect(Collectors.toList());
+        switch (filter.trim().toLowerCase()) {
+            case "active":
+                questionPage = hasTag 
+                    ? questionRepository.findByTagNameOrderByMostAnswers(tag.trim(), pageable)
+                    : questionRepository.findAllOrderByMostAnswers(pageable);
+                break;
+            case "trending":
+                questionPage = hasTag 
+                    ? questionRepository.findByTagNameOrderByViewsDesc(tag.trim(), pageable)
+                    : questionRepository.findAllByOrderByViewsDesc(pageable);
+                break;
+            case "featured":
+                questionPage = hasTag 
+                    ? questionRepository.findByTagNameOrderByMostVotes(tag.trim(), pageable)
+                    : questionRepository.findAllOrderByMostVotes(pageable);
+                break;
+            case "newest":
+            default:
+                questionPage = hasTag 
+                    ? questionRepository.findByTagNameOrderByCreatedAtDesc(tag.trim(), pageable)
+                    : questionRepository.findAllByOrderByCreatedAtDesc(pageable);
+                break;
+        }
 
-                return QuestionPageResponseDto.builder()
-                                .content(dtoList)
-                                .totalPages(questionPage.getTotalPages())
-                                .totalElements(questionPage.getTotalElements())
-                                .currentPage(questionPage.getNumber())
-                                .build();
+        List<QuestionResponseDto> dtoList = questionPage.getContent().stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+
+        return com.uas.mardira_forum.dto.QuestionPageResponseDto.builder()
+                .content(dtoList)
+                .totalPages(questionPage.getTotalPages())
+                .totalElements(questionPage.getTotalElements())
+                .currentPage(questionPage.getNumber())
+                .build();
         }
 
         @Transactional

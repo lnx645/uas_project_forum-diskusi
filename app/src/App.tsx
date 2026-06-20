@@ -22,6 +22,10 @@ const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           {
+            path: "",
+            lazy: () => import("./page/home"),
+          },
+          {
             path: "questions",
             lazy: () => import("./page/questions"),
           },

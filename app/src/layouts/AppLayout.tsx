@@ -6,6 +6,7 @@ import {
   HiOutlineUserGroup,
   HiOutlineBriefcase,
 } from "react-icons/hi2"; // Menggunakan Heroicons v2
+import { SidebarWidgets } from "../components/SidebarWidget";
 type MenuItem = {
   label: string;
   href: string;
@@ -80,12 +81,8 @@ export const AppLayout = () => {
       <main className="flex-1 bg-(--theme-content-background-color) min-w-0">
         <Outlet />
       </main>
-      <aside className="sticky top-14.75 h-[calc(100vh-59px)] w-81 shrink-0 overflow-y-auto border-l border-(--theme-content-border-color) bg-[var(--theme-background-color)]">
-        <div className="p-3">
-          <div className="bg-(--theme-content-background-color) border border-(--theme-content-border-color) p-4 rounded text-sm shadow-sm">
-            lorem ipsum widget
-          </div>
-        </div>
+      <aside className="sticky top-14.75 h-[calc(100vh-59px)] lg:w-81 shrink-0 overflow-y-auto border-l border-(--theme-content-border-color) bg-(--theme-background-color)">
+       <SidebarWidgets/>
       </aside>
     </div>
   );
