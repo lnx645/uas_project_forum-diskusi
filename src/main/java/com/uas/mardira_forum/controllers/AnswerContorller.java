@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.uas.mardira_forum.dto.AnswerResponseDto;
 import com.uas.mardira_forum.dto.QuestionAnswerRequestDto;
 import com.uas.mardira_forum.model.CustomUserDetails;
 import com.uas.mardira_forum.services.AnswerService;
@@ -29,10 +30,8 @@ public class AnswerContorller {
     @GetMapping("/{id}")
     public ResponseEntity<?> getAnswerById(@PathVariable String id) {
         try {
-            // Kita parsing string dari frontend menjadi UUID di sini sebelum dilempar ke service
             UUID answerId = UUID.fromString(id);
-            // Pastikan kamu punya method getAnswerById di AnswerService-mu ya!
-            var answerData = this.answerService.getAnswerById(answerId); 
+            AnswerResponseDto answerData = this.answerService.getAnswerById(answerId); 
             return ResponseEntity.ok(answerData);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Format ID Jawaban tidak valid.");

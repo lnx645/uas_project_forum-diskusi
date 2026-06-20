@@ -11,12 +11,24 @@ import { Button } from "../components/Button";
 import { toast } from "sonner";
 import MDEditor from "@uiw/react-md-editor";
 
+interface AnswerResponseDto {
+  id: string;
+  content: string;
+  createdAt: string;
+  questionId: string | null;
+  userId: string | null;
+  username: string | null;
+  name: string | null;
+  avatarUrl: string | null;
+}
+
 export const loader: LoaderFunction = async ({ params }) => {
   const { id: answerId } = params;
 
   try {
     const response = await api.get(`/api/answer/${answerId}`);
-    return { data: response.data, error: null };
+
+    return { data: response.data as AnswerResponseDto, error: null };
   } catch (err: any) {
     return {
       data: null,
@@ -29,11 +41,14 @@ export const loader: LoaderFunction = async ({ params }) => {
 };
 
 export const Component = () => {
-  const {id: answerId } = useParams();
+  const { id: answerId } = useParams();
   const navigate = useNavigate();
-  const user: any = useAsyncValue();
+  const user: any = useAsyncValue(); 
 
-  const loaderResult = useLoaderData() as { data: any; error: string | null };
+  const loaderResult = useLoaderData() as {
+    data: AnswerResponseDto | null;
+    error: string | null;
+  };
   const [content, setContent] = useState<string | undefined>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -45,7 +60,7 @@ export const Component = () => {
 
   useEffect(() => {
     if (loaderResult.data && user) {
-      if (loaderResult.data.user?.id !== user.id) {
+      if (loaderResult.data.userId !== user.id) {
         toast.error("Kamu tidak memiliki akses untuk mengedit jawaban ini.");
         navigate(-1);
       }
@@ -83,13 +98,17 @@ export const Component = () => {
       });
 
       toast.success("Jawaban berhasil diperbarui!");
-      if (loaderResult.data.questionId) {
-        navigate(`/questions/${loaderResult.data.questionId}`);
+      if (loaderResult?.data?.questionId) {
+        navigate(`/questions/${loaderResult?.data.questionId}`);
       } else {
         navigate(-1);
       }
     } catch (error: any) {
-      toast.error(error.response?.data || "Gagal memperbarui jawaban.");
+      const serverError =
+        error.response?.data?.message ||
+        error.response?.data ||
+        "Gagal memperbarui jawaban.";
+      toast.error(serverError);
     } finally {
       setIsSubmitting(false);
     }

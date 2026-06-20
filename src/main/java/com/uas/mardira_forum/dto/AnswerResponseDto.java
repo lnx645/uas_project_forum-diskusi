@@ -1,5 +1,6 @@
 package com.uas.mardira_forum.dto;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -17,4 +18,10 @@ public class AnswerResponseDto {
     private int voteCount;
     private UserResponseDTO user;
     private boolean accepted;
+    private UUID userId;
+    private String username;
+    private String name;
+    private UUID questionId;
+    private  LocalDateTime createdAt;
+    private String avatarUrl;
 }

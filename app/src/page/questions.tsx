@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLoaderData, useNavigate } from "react-router";
+import { useLoaderData, useNavigate, useLocation } from "react-router";
 import type { LoaderFunction } from "react-router";
 import { Button } from "../components/Button";
 import { useWebSocket } from "../contexts/WebsocketContext";
@@ -8,29 +8,40 @@ import { formatReputation, formatTimeAgo } from "../core/formatter";
 
 const filters = ["Newest", "Active", "Trending", "Featured"];
 
-// Menggunakan styling badge tag abu-abu flat tipis sesuai gambar referensi
 const getTagClassName = (tagName: string) => {
   return "bg-stone-100 text-stone-700 hover:bg-stone-200 border border-transparent rounded px-2 py-1 text-[11px] font-normal transition-colors font-sans";
 };
 
-export const loader: LoaderFunction = async () => {
-  const response = await api.get("/api/questions");
-  return response.data;
+export const loader: LoaderFunction = async ({ request }) => {
+  const url = new URL(request.url);
+  const page = url.searchParams.get("page") || "0";
+  const filter = url.searchParams.get("filter") || "Newest";
+
+  try {
+    const response = await api.get(`/api/questions?page=${page}&size=10&filter=${filter}`);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    return { content: [], totalPages: 0, totalElements: 0, currentPage: 0 };
+  }
 };
 
 export const Component = () => {
-  const initialQuestions = useLoaderData() as any[];
+  const pagedData = useLoaderData() as any; 
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [questions, setQuestions] = useState<any[]>(initialQuestions);
-  const [activeFilter, setActiveFilter] = useState("Newest");
+  const searchParams = new URLSearchParams(location.search);
+  const activeFilter = searchParams.get("filter") || "Newest";
+  const currentPage = parseInt(searchParams.get("page") || "0", 10);
+
+  const [questions, setQuestions] = useState<any[]>(pagedData?.content || []);
   const { stompClient, isConnected } = useWebSocket();
-
   useEffect(() => {
-    if (initialQuestions) {
-      setQuestions(initialQuestions);
+    if (pagedData?.content) {
+      setQuestions(pagedData.content);
     }
-  }, [initialQuestions]);
+  }, [pagedData]);
 
   useEffect(() => {
     if (!stompClient || !isConnected) return;
@@ -47,6 +58,14 @@ export const Component = () => {
       if (questionSub) questionSub.unsubscribe();
     };
   }, [stompClient, isConnected]);
+
+  const handleFilterChange = (selectedFilter: string) => {
+    navigate(`?page=0&filter=${selectedFilter}`);
+  };
+  const handlePageChange = (targetPage: number) => {
+    if (targetPage < 0 || targetPage >= pagedData.totalPages) return;
+    navigate(`?page=${targetPage}&filter=${activeFilter}`);
+  };
 
   return (
     <div className="bg-white antialiased min-h-screen text-stone-800 font-sans">
@@ -66,14 +85,15 @@ export const Component = () => {
 
         <div className="mt-5 flex items-center">
           <p className="text-[15px] text-stone-600">
-            {questions.length} questions
+            {pagedData?.totalElements || 0} questions
           </p>
 
           <div className="ml-auto flex overflow-hidden rounded-md border border-stone-300 bg-white">
             {filters.map((filter) => (
               <button
                 key={filter}
-                onClick={() => setActiveFilter(filter)}
+                type="button"
+                onClick={() => handleFilterChange(filter)}
                 className={`border-r border-stone-300 px-3 py-1 text-xs leading-none transition-colors last:border-r-0 cursor-pointer
                   ${
                     filter === activeFilter
@@ -111,7 +131,7 @@ export const Component = () => {
                   </div>
 
                   <div
-                    className={`my-1  py-0.5 text-center text-[13px] rounded ${
+                    className={`my-1 py-0.5 text-center text-[13px] rounded ${
                       hasAnswers
                         ? "border border-emerald-600 text-emerald-700 font-medium"
                         : "text-stone-500"
@@ -120,14 +140,12 @@ export const Component = () => {
                     {question?.answers?.length ?? 0} answers
                   </div>
 
-                  {/* Views */}
                   <div className="text-stone-400">
                     {question.viewsCount ?? 0} views
                   </div>
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  {/* Judul Pertanyaan */}
                   <h2
                     onClick={() => navigate(`/questions/${question.id}`)}
                     className="cursor-pointer text-[17px] leading-[1.35] text-sky-700 hover:text-sky-800 break-words font-normal"
@@ -135,14 +153,11 @@ export const Component = () => {
                     {question.title}
                   </h2>
 
-                  {/* Konten Pendek */}
                   <p className="mt-2 text-[13px] text-stone-600 line-clamp-2 leading-relaxed break-words">
                     {question.description}
                   </p>
 
-                  {/* Footer Kanan (Tags & User Meta) */}
                   <div className="mt-3 flex items-end">
-                    {/* Render Tags */}
                     <div className="flex flex-wrap gap-1.5">
                       {question.tags && question.tags.length > 0 ? (
                         question.tags.map((tag: any) => (
@@ -155,7 +170,6 @@ export const Component = () => {
                       )}
                     </div>
 
-                    {/* Meta User Profile (Pojok Kanan Bawah) */}
                     <div className="ml-auto flex items-center gap-2 text-[12px] text-stone-500">
                       <div className="flex h-8 w-8 items-center justify-center rounded bg-orange-200 text-xs font-semibold text-orange-800 uppercase">
                         {question.user?.username?.charAt(0) || "U"}
@@ -185,6 +199,42 @@ export const Component = () => {
           </div>
         )}
       </div>
+
+      {pagedData && pagedData.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 py-8 border-t border-stone-100 bg-stone-50/30">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 0}
+            className="px-3 py-1.5 border border-stone-300 rounded text-xs font-medium bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-50 transition-colors cursor-pointer"
+          >
+            Prev
+          </button>
+          
+          <div className="flex gap-1">
+            {Array.from({ length: pagedData.totalPages }).map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => handlePageChange(idx)}
+                className={`px-3 py-1.5 border rounded text-xs font-medium transition-colors cursor-pointer ${
+                  currentPage === idx
+                    ? "bg-stone-900 border-stone-900 text-white font-semibold"
+                    : "bg-white border-stone-300 text-stone-600 hover:bg-stone-50"
+                }`}
+              >
+                {idx + 1}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === pagedData.totalPages - 1}
+            className="px-3 py-1.5 border border-stone-300 rounded text-xs font-medium bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-50 transition-colors cursor-pointer"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };

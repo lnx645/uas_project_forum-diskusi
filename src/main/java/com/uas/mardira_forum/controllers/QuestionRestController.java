@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -21,8 +20,11 @@ public class QuestionRestController {
     private final QuestionService questionService;
 
     @GetMapping
-    public ResponseEntity<List<QuestionResponseDto>> get() {
-        return ResponseEntity.ok(questionService.getAllQuestions());
+    public ResponseEntity<com.uas.mardira_forum.dto.QuestionPageResponseDto> get(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size,
+            @RequestParam(defaultValue = "Newest") String filter) {
+        return ResponseEntity.ok(questionService.getQuestionsPaginated(page, size, filter));
     }
 
     @GetMapping("/{id}")
@@ -33,8 +35,10 @@ public class QuestionRestController {
             return ResponseEntity.notFound().build();
         }
     }
+
     @PostMapping
-    public ResponseEntity<?> createQuestion(@AuthenticationPrincipal CustomUserDetails principal,@RequestBody QuestionRequestDto request ) {
+    public ResponseEntity<?> createQuestion(@AuthenticationPrincipal CustomUserDetails principal,
+            @RequestBody QuestionRequestDto request) {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kamu harus login terlebih dahulu");
         }
@@ -46,8 +50,9 @@ public class QuestionRestController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
+
     @PostMapping("/{id}/vote")
-    public void vote(@AuthenticationPrincipal CustomUserDetails user,@PathVariable String qid){
+    public void vote(@AuthenticationPrincipal CustomUserDetails user, @PathVariable String qid) {
 
     }
 }

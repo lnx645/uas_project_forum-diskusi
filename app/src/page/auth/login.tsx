@@ -1,4 +1,4 @@
-import { data, redirect, useFetcher, type ActionFunction } from "react-router";
+import { data, Link, redirect, useFetcher, type ActionFunction } from "react-router";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { api } from "../../core/api";
@@ -47,6 +47,12 @@ export function Component() {
             <Input placeholder="Username" name="username" />
             <Input placeholder="Password" name="password" />
             <Button type="submit" name="login">Login</Button>
+            <p className="text-xs text-center text-gray-500 mt-2">
+              Sudah punya akun?{" "}
+              <Link to="/register" className="text-blue-600 hover:underline">
+                Login disini
+              </Link>
+            </p>
           </fetcher.Form>
         </div>
       </div>

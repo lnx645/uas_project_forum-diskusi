@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.uas.mardira_forum.dto.AnswerResponseDto;
 import com.uas.mardira_forum.dto.QuestionAnswerRequestDto;
 import com.uas.mardira_forum.model.Answer;
 import com.uas.mardira_forum.model.CustomUserDetails;
@@ -56,9 +57,19 @@ public class AnswerService {
         }
     }
 
-    public Answer getAnswerById(UUID id) {
-        return answerRepository.findById(id)
+    public AnswerResponseDto getAnswerById(UUID id) {
+        Answer answer = answerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Jawaban dengan ID " + id + " tidak ditemukan"));
+        return AnswerResponseDto.builder()
+                .id(answer.getId())
+                .content(answer.getContent()) 
+                .createdAt(answer.getCreatedAt())
+                .questionId(answer.getQuestion() != null ? answer.getQuestion().getId() : null)
+                .userId(answer.getUser() != null ? answer.getUser().getId() : null)
+                .username(answer.getUser() != null ? answer.getUser().getUsername() : null)
+                .name(answer.getUser() != null ? answer.getUser().getName() : null)
+                .avatarUrl(answer.getUser() != null ? answer.getUser().getAvatarUrl() : null)
+                .build();
     }
 
     public void updateAnswerInline(UUID answerId, QuestionAnswerRequestDto requestDto, CustomUserDetails currentUser) {
