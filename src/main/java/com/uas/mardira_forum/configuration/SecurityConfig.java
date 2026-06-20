@@ -29,18 +29,20 @@ import lombok.AllArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();        
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173")); 
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); 
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-    @Bean   
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -49,9 +51,12 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/ws-forum/**").permitAll()
-                        .requestMatchers("/api/auth/login","/api/tags","/api/questions/**", "/api/test-broadcast/**", "/api/auth/register","/error").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/tags", "/api/questions/**", "/api/test-broadcast/**",
+                                "/api/auth/register", "/error")
+                        .permitAll()
                         .requestMatchers("/api/me").authenticated()
-                        .requestMatchers(HttpMethod.POST,"/api/questions").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/questions").authenticated()
+                        .requestMatchers("/api/questions/stats").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

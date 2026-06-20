@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "questions")
@@ -43,7 +44,7 @@ public class Question {
     private int views = 0;
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "question_tags", joinColumns = @JoinColumn(name = "question_id"), inverseJoinColumns = @JoinColumn(name = "tag_id"))
-    private List<Tags> tags;
+    private Set<Tags> tags;
     @Column(name = "vote_count", nullable = false)
     @Builder.Default
     private int voteCount = 0;

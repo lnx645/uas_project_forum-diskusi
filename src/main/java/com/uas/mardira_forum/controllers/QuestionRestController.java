@@ -70,4 +70,10 @@ public class QuestionRestController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
+
+    @GetMapping("/stats")
+    public ResponseEntity<java.util.Map<String, Object>> getForumStats() {
+        java.util.Map<String, Object> stats = questionService.getForumOverviewStats();
+        return ResponseEntity.ok(stats);
+    }
 }

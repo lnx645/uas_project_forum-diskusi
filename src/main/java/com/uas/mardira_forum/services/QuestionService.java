@@ -11,6 +11,7 @@ import com.uas.mardira_forum.model.Tags;
 import com.uas.mardira_forum.model.User;
 import com.uas.mardira_forum.model.VoteAnswer;
 import com.uas.mardira_forum.model.VoteQuestion;
+import com.uas.mardira_forum.repository.AnswerRepository;
 import com.uas.mardira_forum.repository.QuestionRepository;
 import com.uas.mardira_forum.repository.TagRepository;
 import com.uas.mardira_forum.repository.UserRepository;
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -35,7 +37,34 @@ public class QuestionService {
         private final QuestionRepository questionRepository;
         private final UserRepository userRepository;
         private final TagRepository tagRepository;
+        private final AnswerRepository answerRepository;
         private final SimpMessagingTemplate messagingTemplate;
+
+        @Transactional(readOnly = true)
+        public java.util.Map<String, Object> getForumOverviewStats() {
+                java.util.Map<String, Object> statsMap = new java.util.HashMap<>();
+
+                try {
+                        statsMap.put("totalQuestions", questionRepository.count());
+                        statsMap.put("totalAnswers", answerRepository.count());
+                        statsMap.put("totalMembers", userRepository.count());
+                        List<String> popularTags = tagRepository.findAll().stream()
+                                        .sorted((t1, t2) -> (t2.getQuestionCount() == null ? 0 : t2.getQuestionCount())
+                                                        - (t1.getQuestionCount() == null ? 0 : t1.getQuestionCount()))
+                                        .limit(3)
+                                        .map(com.uas.mardira_forum.model.Tags::getName)
+                                        .collect(Collectors.toList());
+
+                        statsMap.put("hotTags", popularTags);
+                        statsMap.put("status", "OK");
+
+                } catch (Exception e) {
+                        statsMap.put("status", "ERROR");
+                        statsMap.put("message", "Gagal memuat statistik sistem.");
+                }
+
+                return statsMap;
+        }
 
         @Transactional(readOnly = true)
         public QuestionPageResponseDto getQuestionsPaginated(int page, int size, String filter, String tag) {
@@ -102,12 +131,12 @@ public class QuestionService {
                 User author = userRepository.findById(username)
                                 .orElseThrow(() -> new RuntimeException("Sesi user tidak valid atau tidak ditemukan"));
 
-                List<Tags> associatedTags = request.getTags().stream()
+                Set<Tags> associatedTags = request.getTags().stream()
                                 .map(tagName -> tagRepository.findByName(tagName.toLowerCase().trim())
                                                 .orElseGet(() -> tagRepository.save(
                                                                 Tags.builder().name(tagName.toLowerCase().trim())
                                                                                 .build())))
-                                .collect(Collectors.toList());
+                                .collect(Collectors.toSet());
 
                 Question question = Question.builder()
                                 .title(request.getTitle())

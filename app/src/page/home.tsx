@@ -1,12 +1,32 @@
-import { useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { useNavigate, useLoaderData } from "react-router";
+import type { LoaderFunction } from "react-router";
+import { api } from "../core/api";
+
+// 1. Loader untuk mengambil data statistik dari endpoint Map kustom kamu
+export const loader: LoaderFunction = async () => {
+  try {
+    const response = await api.get("/api/questions/stats");
+    return response.data;
+  } catch (error) {
+    console.error("Gagal memuat statistik forum:", error);
+    return {
+      totalQuestions: 0,
+      totalMembers: 0,
+      totalAnswers: 0,
+    };
+  }
+};
 
 export const Component = () => {
+  const serverStats = useLoaderData() as any;
   const navigate = useNavigate();
 
+  // Susun struktur data agar sesuai dengan pemetaan UI kamu
   const stats = [
-    { label: "Total Questions", count: "1,420" },
-    { label: "Active Members", count: "328" },
-    { label: "Tags Covered", count: "64" },
+    { label: "Total Questions", count: serverStats?.totalQuestions ?? 0 },
+    { label: "Active Members", count: serverStats?.totalMembers ?? 0 },
+    { label: "Total Answers", count: serverStats?.totalAnswers ?? 0 },
   ];
 
   return (
@@ -33,7 +53,7 @@ export const Component = () => {
               Jelajahi Pertanyaan
             </button>
             <button
-              onClick={() => navigate("/questions/create")}
+              onClick={() => navigate("/questions/ask")} // Sesuaikan rute ask question kamu
               className="cursor-pointer rounded border border-stone-300 bg-white px-4 py-2 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-50"
             >
               Ajukan Pertanyaan
@@ -51,7 +71,7 @@ export const Component = () => {
                 {stat.label}
               </span>
               <span className="text-xl font-mono font-semibold text-stone-800">
-                {stat.count}
+                {Number(stat.count).toLocaleString("id-ID")}
               </span>
             </div>
           ))}
