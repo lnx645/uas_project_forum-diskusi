@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 
 import com.uas.mardira_forum.dto.AnswerResponseDto;
 import com.uas.mardira_forum.dto.QuestionAnswerRequestDto;
+import com.uas.mardira_forum.dto.QuestionResponseDto;
+import com.uas.mardira_forum.exception.ResourceNotFoundException;
+import com.uas.mardira_forum.exception.UnauthorizedAccessException;
 import com.uas.mardira_forum.model.Answer;
 import com.uas.mardira_forum.model.CustomUserDetails;
 import com.uas.mardira_forum.model.Question;
@@ -15,6 +18,7 @@ import com.uas.mardira_forum.repository.AnswerRepository;
 import com.uas.mardira_forum.repository.QuestionRepository;
 import com.uas.mardira_forum.repository.UserRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -57,12 +61,34 @@ public class AnswerService {
         }
     }
 
+    @Transactional
+    public void deleteAnswer(UUID answerId, UUID userId) {
+        Answer answer = answerRepository.findById(answerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Jawaban dengan ID " + answerId + " tidak ditemukan"));
+
+        if (!answer.getUser().getId().equals(userId)) {
+            throw new UnauthorizedAccessException("Kamu tidak memiliki hak akses untuk menghapus jawaban ini!");
+        }
+
+        Question question = answer.getQuestion();
+        UUID questionId = question.getId();
+        answerRepository.delete(answer);
+
+        answerRepository.flush();
+        try {
+            QuestionResponseDto updatedQuestionDto = questionService.getQuestionDetail(questionId);
+            simpMessagingTemplate.convertAndSend("/topic/questions/" + questionId, updatedQuestionDto);
+        } catch (Exception e) {
+            System.err.println("Gagal mem-broadcast update question setelah answer dihapus: " + e.getMessage());
+        }
+    }
+
     public AnswerResponseDto getAnswerById(UUID id) {
         Answer answer = answerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Jawaban dengan ID " + id + " tidak ditemukan"));
         return AnswerResponseDto.builder()
                 .id(answer.getId())
-                .content(answer.getContent()) 
+                .content(answer.getContent())
                 .createdAt(answer.getCreatedAt())
                 .questionId(answer.getQuestion() != null ? answer.getQuestion().getId() : null)
                 .userId(answer.getUser() != null ? answer.getUser().getId() : null)

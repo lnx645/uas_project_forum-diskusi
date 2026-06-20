@@ -38,46 +38,48 @@ public class QuestionService {
         private final SimpMessagingTemplate messagingTemplate;
 
         @Transactional(readOnly = true)
-        public QuestionPageResponseDto getQuestionsPaginated(int page, int size, String filter,String tag) {
-             Pageable pageable = PageRequest.of(page, size);
-        Page<Question> questionPage;
+        public QuestionPageResponseDto getQuestionsPaginated(int page, int size, String filter, String tag) {
+                Pageable pageable = PageRequest.of(page, size);
+                Page<Question> questionPage;
 
-        boolean hasTag = tag != null && !tag.trim().isEmpty();
+                boolean hasTag = tag != null && !tag.trim().isEmpty();
 
-        switch (filter.trim().toLowerCase()) {
-            case "active":
-                questionPage = hasTag 
-                    ? questionRepository.findByTagNameOrderByMostAnswers(tag.trim(), pageable)
-                    : questionRepository.findAllOrderByMostAnswers(pageable);
-                break;
-            case "trending":
-                questionPage = hasTag 
-                    ? questionRepository.findByTagNameOrderByViewsDesc(tag.trim(), pageable)
-                    : questionRepository.findAllByOrderByViewsDesc(pageable);
-                break;
-            case "featured":
-                questionPage = hasTag 
-                    ? questionRepository.findByTagNameOrderByMostVotes(tag.trim(), pageable)
-                    : questionRepository.findAllOrderByMostVotes(pageable);
-                break;
-            case "newest":
-            default:
-                questionPage = hasTag 
-                    ? questionRepository.findByTagNameOrderByCreatedAtDesc(tag.trim(), pageable)
-                    : questionRepository.findAllByOrderByCreatedAtDesc(pageable);
-                break;
-        }
+                switch (filter.trim().toLowerCase()) {
+                        case "active":
+                                questionPage = hasTag
+                                                ? questionRepository.findByTagNameOrderByMostAnswers(tag.trim(),
+                                                                pageable)
+                                                : questionRepository.findAllOrderByMostAnswers(pageable);
+                                break;
+                        case "trending":
+                                questionPage = hasTag
+                                                ? questionRepository.findByTagNameOrderByViewsDesc(tag.trim(), pageable)
+                                                : questionRepository.findAllByOrderByViewsDesc(pageable);
+                                break;
+                        case "featured":
+                                questionPage = hasTag
+                                                ? questionRepository.findByTagNameOrderByMostVotes(tag.trim(), pageable)
+                                                : questionRepository.findAllOrderByMostVotes(pageable);
+                                break;
+                        case "newest":
+                        default:
+                                questionPage = hasTag
+                                                ? questionRepository.findByTagNameOrderByCreatedAtDesc(tag.trim(),
+                                                                pageable)
+                                                : questionRepository.findAllByOrderByCreatedAtDesc(pageable);
+                                break;
+                }
 
-        List<QuestionResponseDto> dtoList = questionPage.getContent().stream()
-                .map(this::convertToResponseDto)
-                .collect(Collectors.toList());
+                List<QuestionResponseDto> dtoList = questionPage.getContent().stream()
+                                .map(this::convertToResponseDto)
+                                .collect(Collectors.toList());
 
-        return com.uas.mardira_forum.dto.QuestionPageResponseDto.builder()
-                .content(dtoList)
-                .totalPages(questionPage.getTotalPages())
-                .totalElements(questionPage.getTotalElements())
-                .currentPage(questionPage.getNumber())
-                .build();
+                return com.uas.mardira_forum.dto.QuestionPageResponseDto.builder()
+                                .content(dtoList)
+                                .totalPages(questionPage.getTotalPages())
+                                .totalElements(questionPage.getTotalElements())
+                                .currentPage(questionPage.getNumber())
+                                .build();
         }
 
         @Transactional
@@ -180,5 +182,27 @@ public class QuestionService {
                 }
 
                 return response.build();
+        }
+
+        @Transactional
+        public void deleteQuestion(UUID questionId, UUID userId) {
+                // 1. Cari data pertanyaannya
+                Question question = questionRepository.findById(questionId)
+                                .orElseThrow(() -> new RuntimeException("Pertanyaan tidak ditemukan"));
+
+                if (!question.getUser().getId().equals(userId)) {
+                        throw new SecurityException("Kamu tidak memiliki hak akses untuk menghapus pertanyaan ini!");
+                }
+                if (question.getTags() != null) {
+                        question.getTags().forEach(tag -> {
+                                if (tag.getQuestionCount() != null && tag.getQuestionCount() > 0) {
+                                        tag.setQuestionCount(tag.getQuestionCount() - 1);
+                                        tagRepository.save(tag);
+                                        messagingTemplate.convertAndSend("/topic/tags", tag);
+                                }
+                        });
+                }
+                questionRepository.delete(question);
+                messagingTemplate.convertAndSend("/topic/questions/deleted", questionId.toString());
         }
 }

@@ -24,14 +24,11 @@ public class AnswerContorller {
     @Autowired
     private AnswerService answerService;
 
-    // =========================================================================
-    // GET METHHOD (Wajib ada untuk disuntikkan ke Loader React Router)
-    // =========================================================================
     @GetMapping("/{id}")
     public ResponseEntity<?> getAnswerById(@PathVariable String id) {
         try {
             UUID answerId = UUID.fromString(id);
-            AnswerResponseDto answerData = this.answerService.getAnswerById(answerId); 
+            AnswerResponseDto answerData = this.answerService.getAnswerById(answerId);
             return ResponseEntity.ok(answerData);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Format ID Jawaban tidak valid.");
@@ -50,7 +47,7 @@ public class AnswerContorller {
 
         return "OKE!";
     }
-    
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateAnswer(
             @PathVariable String id, // Ubah jadi String dulu agar tidak missmatch parsing otomatis dari string JS
@@ -62,6 +59,30 @@ public class AnswerContorller {
             return ResponseEntity.ok("Jawaban berhasil diperbarui");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Format ID tidak valid.");
+        }
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteAnswer(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.status(401).body("Kamu harus login terlebih dahulu");
+        }
+
+        try {
+            UUID answerId = UUID.fromString(id);
+            answerService.deleteAnswer(answerId, userDetails.getId());
+            return ResponseEntity.ok("Jawaban berhasil dihapus");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Format ID Jawaban tidak valid.");
+        } catch (com.uas.mardira_forum.exception.ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (com.uas.mardira_forum.exception.UnauthorizedAccessException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Terjadi kesalahan internal pada server.");
         }
     }
 }

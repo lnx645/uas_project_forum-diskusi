@@ -12,7 +12,6 @@ import { Button } from "../components/Button";
 import { toast } from "sonner";
 import MDEditor from "@uiw/react-md-editor";
 
-// Import komponen-komponen hasil pemisahan
 import { VotePanel } from "../components/VotePanel";
 import { QuestionHeader } from "../components/QuestionHeader";
 import { UserCard } from "../components/UserCard";
@@ -42,7 +41,7 @@ export const loader: LoaderFunction = async ({ params }) => {
 export const Component = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const user: any = useAsyncValue();
+  const user: any = useAsyncValue(); // Berisi data user terotentikasi (cth: { id: "...", username: "..." })
 
   const loaderResult = useLoaderData() as { data: any; error: string | null };
   const [question, setQuestion] = useState<any>(loaderResult.data);
@@ -74,7 +73,38 @@ export const Component = () => {
     };
   }, [stompClient, isConnected, id]);
 
-  // Actions / Handlers
+  // Handler Hapus Question
+  const handleDeleteQuestion = async () => {
+    if (!window.confirm("Apakah kamu yakin ingin menghapus pertanyaan ini secara permanen?")) return;
+
+    try {
+      await api.delete(`/api/questions/${id}`);
+      toast.success("Pertanyaan berhasil dihapus.");
+      navigate("/questions");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.response?.data || "Gagal menghapus pertanyaan.");
+    }
+  };
+
+  // Handler Hapus Answer
+  const handleDeleteAnswer = async (answerId: string) => {
+    if (!window.confirm("Apakah kamu yakin ingin menghapus jawaban ini?")) return;
+
+    try {
+      await api.delete(`/api/answer/${answerId}`);
+      toast.success("Jawaban berhasil dihapus.");
+      
+      // Update state lokal jika perubahan tidak di-broadcast via websocket secara instan
+      setQuestion((prev: any) => ({
+        ...prev,
+        answers: prev.answers.filter((ans: any) => ans.id !== answerId)
+      }));
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.response?.data || "Gagal menghapus jawaban.");
+    }
+  };
+
+  // Actions / Handlers Lainnya
   const handleVoteAction = async (
     targetId: string,
     type: "QUESTION" | "ANSWER",
@@ -100,9 +130,7 @@ export const Component = () => {
     }
   };
 
-  const handleSubmitAnswerAction = async (
-    content: string,
-  ): Promise<boolean> => {
+  const handleSubmitAnswerAction = async (content: string): Promise<boolean> => {
     try {
       setIsSubmittingAnswer(true);
       await api.post(`/api/answer/${id}`, { content });
@@ -116,18 +144,13 @@ export const Component = () => {
     }
   };
 
-  // Error boundary render
   if (loaderResult.error || !question || question.status) {
     return (
       <div className="p-12 text-center font-sans">
         <div className="inline-block bg-rose-50 border border-rose-200 text-rose-700 rounded-md p-6 max-w-lg">
-          <h3 className="text-md font-bold mb-2">
-            [!] Gagal Memuat Detail Pertanyaan
-          </h3>
+          <h3 className="text-md font-bold mb-2">[!] Gagal Memuat Detail Pertanyaan</h3>
           <p className="text-xs text-rose-600 mb-4 font-mono">
-            {loaderResult.error ||
-              (question && JSON.stringify(question.message)) ||
-              "ID Thread tidak valid atau telah dihapus."}
+            {loaderResult.error || "ID Thread tidak valid atau telah dihapus."}
           </p>
           <Button size="sm" onClick={() => navigate("/questions")}>
             Kembali ke Forum
@@ -136,6 +159,9 @@ export const Component = () => {
       </div>
     );
   }
+
+  // Cek kepemilikan Question (Mencocokkan ID user login dengan ID pembuat question)
+  const isQuestionOwner = user && question.user && user.id === question.user.id;
 
   return (
     <div className="bg-white antialiased min-h-screen">
@@ -155,10 +181,7 @@ export const Component = () => {
         />
 
         <div className="min-w-0 flex-1">
-          <div
-            className="prose-sm max-w-none text-[15px] leading-relaxed mb-6"
-            data-color-mode="light"
-          >
+          <div className="prose-sm max-w-none text-[15px] leading-relaxed mb-6" data-color-mode="light">
             <MDEditor.Markdown
               source={question.description}
               className="text-sm!"
@@ -167,16 +190,34 @@ export const Component = () => {
           </div>
 
           <div className="flex flex-col mt-5 sm:flex-row sm:items-start justify-between gap-4">
-            <div className="flex flex-wrap gap-1.5">
-              {question.tags?.map((tag: any) => (
-                <span
-                  key={tag.id || tag.name}
-                  className={getTagClassName(tag.name)}
-                >
-                  {tag.name}
-                </span>
-              ))}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap gap-1.5">
+                {question.tags?.map((tag: any) => (
+                  <span key={tag.id || tag.name} className={getTagClassName(tag.name)}>
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+              
+              {/* Tombol Aksi untuk Pemilik Question */}
+              {isQuestionOwner && (
+                <div className="flex gap-3 text-xs mt-2">
+                  <button
+                    onClick={() => navigate(`/questions/${question.id}/edit`)}
+                    className="text-stone-500 hover:text-stone-800 transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={handleDeleteQuestion}
+                    className="text-red-500 hover:text-red-700 font-medium transition-colors cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
+            
             <UserCard
               label="asked"
               createdAt={question.createdAt}
@@ -188,25 +229,30 @@ export const Component = () => {
       </div>
 
       <div className="mt-1">
-        <h2 className="text-[19px] px-4 pb-2 text-stone-900">
+        <h2 className="text-[19px] px-4 pb-2 text-stone-900 border-b border-stone-100">
           {question.answers?.length ?? 0} Answers
         </h2>
 
-        {question.answers?.map((answer: any) => (
-          <AnswerItem
-            key={answer.id}
-            answer={answer}
-            currentUser={user}
-            isCurrentAuthor={question.isCurrentAuthor}
-            onVote={handleVoteAction}
-            onAccept={handleAcceptAnswerAction}
-            onEdit={(ansId) => navigate(`/answer/${ansId}/edit`)}
-            onComment={() => {
-              /* Handle comment */
-            }}
-          />
-        ))}
+        {question.answers?.map((answer: any) => {
+          // Cek kepemilikan Answer (Mencocokkan ID user login dengan ID pembuat answer)
+          const isAnswerOwner = user && answer.user && user.id === answer.user.id;
+
+          return (
+            <AnswerItem
+              key={answer.id}
+              answer={answer}
+              currentUser={user}
+              isCurrentAuthor={question.isCurrentAuthor}
+              onVote={handleVoteAction}
+              onAccept={handleAcceptAnswerAction}
+              onEdit={(ansId) => navigate(`/answer/${ansId}/edit`)}
+              onDelete={isAnswerOwner ? () => handleDeleteAnswer(answer.id) : undefined} // Teruskan jika dia pemiliknya
+              onComment={() => {}}
+            />
+          );
+        })}
       </div>
+      
       <AnswerForm
         user={user}
         isSubmitting={isSubmittingAnswer}

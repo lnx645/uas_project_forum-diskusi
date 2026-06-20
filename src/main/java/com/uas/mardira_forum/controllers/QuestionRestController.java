@@ -25,7 +25,7 @@ public class QuestionRestController {
             @RequestParam(defaultValue = "15") int size,
             @RequestParam(defaultValue = "Newest") String filter,
             @RequestParam(required = false) String tag) {
-        return ResponseEntity.ok(questionService.getQuestionsPaginated(page, size, filter,tag));
+        return ResponseEntity.ok(questionService.getQuestionsPaginated(page, size, filter, tag));
     }
 
     @GetMapping("/{id}")
@@ -52,8 +52,22 @@ public class QuestionRestController {
         }
     }
 
-    @PostMapping("/{id}/vote")
-    public void vote(@AuthenticationPrincipal CustomUserDetails user, @PathVariable String qid) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteQuestion(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable UUID id) {
 
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Kamu harus login terlebih dahulu");
+        }
+
+        try {
+            questionService.deleteQuestion(id, principal.getId());
+            return ResponseEntity.ok("Pertanyaan berhasil dihapus");
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
     }
 }
