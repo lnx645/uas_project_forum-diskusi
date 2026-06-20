@@ -54,6 +54,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login", "/api/tags", "/api/questions/**", "/api/test-broadcast/**",
                                 "/api/auth/register", "/error")
                         .permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/webjars/**")
+                        .permitAll()
                         .requestMatchers("/api/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/questions").authenticated()
                         .requestMatchers("/api/questions/stats").permitAll()
@@ -69,7 +77,6 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // === SEKALIAN JANGAN LUPA PASSWORD ENCODERNYA ===
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

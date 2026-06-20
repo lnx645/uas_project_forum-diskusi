@@ -16,6 +16,7 @@ import com.uas.mardira_forum.repository.QuestionRepository;
 import com.uas.mardira_forum.repository.TagRepository;
 import com.uas.mardira_forum.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class QuestionService {
@@ -42,12 +44,20 @@ public class QuestionService {
 
         @Transactional(readOnly = true)
         public java.util.Map<String, Object> getForumOverviewStats() {
+                log.info("Memulai kalkulasi statistik ringkasan forum (overview stats)");
                 java.util.Map<String, Object> statsMap = new java.util.HashMap<>();
 
                 try {
-                        statsMap.put("totalQuestions", questionRepository.count());
-                        statsMap.put("totalAnswers", answerRepository.count());
-                        statsMap.put("totalMembers", userRepository.count());
+                        long qCount = questionRepository.count();
+                        long aCount = answerRepository.count();
+                        long uCount = userRepository.count();
+                        log.debug("Data mentah terhitung - Pertanyaan: {}, Jawaban: {}, User: {}", qCount, aCount,
+                                        uCount);
+
+                        statsMap.put("totalQuestions", qCount);
+                        statsMap.put("totalAnswers", aCount);
+                        statsMap.put("totalMembers", uCount);
+
                         List<String> popularTags = tagRepository.findAll().stream()
                                         .sorted((t1, t2) -> (t2.getQuestionCount() == null ? 0 : t2.getQuestionCount())
                                                         - (t1.getQuestionCount() == null ? 0 : t1.getQuestionCount()))
@@ -57,8 +67,10 @@ public class QuestionService {
 
                         statsMap.put("hotTags", popularTags);
                         statsMap.put("status", "OK");
+                        log.info("Kalkulasi statistik forum berhasil disematkan. Hot tags saat ini: {}", popularTags);
 
                 } catch (Exception e) {
+                        log.error("Terjadi kegagalan fatal saat memuat statistik sistem forum: {}", e.getMessage(), e);
                         statsMap.put("status", "ERROR");
                         statsMap.put("message", "Gagal memuat statistik sistem.");
                 }
@@ -68,6 +80,8 @@ public class QuestionService {
 
         @Transactional(readOnly = true)
         public QuestionPageResponseDto getQuestionsPaginated(int page, int size, String filter, String tag) {
+                log.info("Menerima permintaan daftar pertanyaan. Halaman: {}, Ukuran: {}, Filter: {}, Tag Kunci: {}",
+                                page, size, filter, tag);
                 Pageable pageable = PageRequest.of(page, size);
                 Page<Question> questionPage;
 
@@ -99,6 +113,9 @@ public class QuestionService {
                                 break;
                 }
 
+                log.debug("Query database berhasil dieksekusi. Jumlah elemen di halaman ini: {}, Total keseluruhan data: {}",
+                                questionPage.getNumberOfElements(), questionPage.getTotalElements());
+
                 List<QuestionResponseDto> dtoList = questionPage.getContent().stream()
                                 .map(this::convertToResponseDto)
                                 .collect(Collectors.toList());
@@ -113,14 +130,23 @@ public class QuestionService {
 
         @Transactional
         public QuestionResponseDto getQuestionDetail(UUID id) {
+                log.info("Membuka detail thread diskusi untuk ID Pertanyaan: {}", id);
                 Question question = questionRepository.findById(id)
-                                .orElseThrow(() -> new RuntimeException("Pertanyaan tidak ditemukan dengan ID: " + id));
+                                .orElseThrow(() -> {
+                                        log.warn("Pencarian gagal: Pertanyaan dengan ID {} tidak ditemukan di database",
+                                                        id);
+                                        return new RuntimeException("Pertanyaan tidak ditemukan dengan ID: " + id);
+                                });
 
-                question.setViews(question.getViews() + 1);
+                int initialViews = question.getViews();
+                question.setViews(initialViews + 1);
                 Question updatedQuestion = questionRepository.save(question);
+                log.debug("Kounter jumlah tayangan (views) untuk ID {} meningkat dari {} ke {}", id, initialViews,
+                                updatedQuestion.getViews());
 
                 QuestionResponseDto responseDto = convertToResponseDto(updatedQuestion);
 
+                log.info("Membroadcast pembaruan detail pertanyaan via WebSocket ke rute /topic/questions/{}", id);
                 messagingTemplate.convertAndSend("/topic/questions/" + id, responseDto);
 
                 return responseDto;
@@ -128,14 +154,25 @@ public class QuestionService {
 
         @Transactional
         public QuestionResponseDto createQuestion(QuestionRequestDto request, UUID username) {
+                log.info("User dengan ID {} mencoba menerbitkan pertanyaan baru berjudul: \"{}\"", username,
+                                request.getTitle());
                 User author = userRepository.findById(username)
-                                .orElseThrow(() -> new RuntimeException("Sesi user tidak valid atau tidak ditemukan"));
+                                .orElseThrow(() -> {
+                                        log.warn("Pembuatan thread ditolak: Sesi user ID {} tidak ditemukan", username);
+                                        return new RuntimeException("Sesi user tidak valid atau tidak ditemukan");
+                                });
 
                 Set<Tags> associatedTags = request.getTags().stream()
-                                .map(tagName -> tagRepository.findByName(tagName.toLowerCase().trim())
-                                                .orElseGet(() -> tagRepository.save(
-                                                                Tags.builder().name(tagName.toLowerCase().trim())
-                                                                                .build())))
+                                .map(tagName -> {
+                                        String cleanedTagName = tagName.toLowerCase().trim();
+                                        return tagRepository.findByName(cleanedTagName)
+                                                        .orElseGet(() -> {
+                                                                log.info("Tag baru dideteksi: [{}]. Menyimpan entitas tag baru ke database.",
+                                                                                cleanedTagName);
+                                                                return tagRepository.save(Tags.builder()
+                                                                                .name(cleanedTagName).build());
+                                                        });
+                                })
                                 .collect(Collectors.toSet());
 
                 Question question = Question.builder()
@@ -148,13 +185,18 @@ public class QuestionService {
                                 .build();
 
                 Question savedQuestion = questionRepository.save(question);
+                log.info("Pertanyaan baru berhasil disimpan di database dengan Generated ID: {}",
+                                savedQuestion.getId());
 
                 associatedTags.forEach(tag -> {
-                        tag.setQuestionCount((tag.getQuestionCount() == null ? 0 : tag.getQuestionCount()) + 1);
+                        int prevCount = tag.getQuestionCount() == null ? 0 : tag.getQuestionCount();
+                        tag.setQuestionCount(prevCount + 1);
                         tagRepository.save(tag);
+                        log.debug("Kounter tag [{}] dinaikkan menjadi: {}", tag.getName(), tag.getQuestionCount());
                         messagingTemplate.convertAndSend("/topic/tags", tag);
                 });
 
+                log.info("Menyiapkan broadcast data ke komponen WebSocket global /topic/questions");
                 QuestionResponseDto responseDto = convertToResponseDto(savedQuestion);
                 messagingTemplate.convertAndSend("/topic/questions", responseDto);
                 return responseDto;
@@ -207,7 +249,6 @@ public class QuestionService {
                                                                                 .build())
                                                                 .build();
                                         }).toList());
-
                 }
 
                 return response.build();
@@ -215,23 +256,35 @@ public class QuestionService {
 
         @Transactional
         public void deleteQuestion(UUID questionId, UUID userId) {
-                // 1. Cari data pertanyaannya
+                log.info("Permintaan penghapusan thread. Target ID Pertanyaan: {}, Oleh User ID: {}", questionId,
+                                userId);
+
                 Question question = questionRepository.findById(questionId)
-                                .orElseThrow(() -> new RuntimeException("Pertanyaan tidak ditemukan"));
+                                .orElseThrow(() -> {
+                                        log.warn("Penghapusan gagal: Target ID {} tidak ditemukan.", questionId);
+                                        return new RuntimeException("Pertanyaan tidak ditemukan");
+                                });
 
                 if (!question.getUser().getId().equals(userId)) {
+                        log.error("PELANGGARAN HAK AKSES: User ID {} mencoba menghapus paksa thread ID {} milik orang lain!",
+                                        userId, questionId);
                         throw new SecurityException("Kamu tidak memiliki hak akses untuk menghapus pertanyaan ini!");
                 }
+
                 if (question.getTags() != null) {
                         question.getTags().forEach(tag -> {
                                 if (tag.getQuestionCount() != null && tag.getQuestionCount() > 0) {
                                         tag.setQuestionCount(tag.getQuestionCount() - 1);
                                         tagRepository.save(tag);
+                                        log.debug("Kounter tag [{}] diturunkan menjadi: {}", tag.getName(),
+                                                        tag.getQuestionCount());
                                         messagingTemplate.convertAndSend("/topic/tags", tag);
                                 }
                         });
                 }
+
                 questionRepository.delete(question);
+                log.info("Thread diskusi dengan ID {} berhasil dihapus permanen dari sistem database.", questionId);
                 messagingTemplate.convertAndSend("/topic/questions/deleted", questionId.toString());
         }
 }
